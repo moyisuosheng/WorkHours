@@ -25,6 +25,9 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src')
       }
     },
-    plugins: [vue()]
+    plugins: [vue()],
+    server: {
+      host: '0.0.0.0'
+    }
   }
 })
