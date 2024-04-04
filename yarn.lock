@@ -2175,7 +2175,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dayjs@npm:^1.10.5":
+"dayjs@npm:^1.10.5, dayjs@npm:^1.11.10":
   version: 1.11.10
   resolution: "dayjs@npm:1.11.10"
   checksum: 10c0/4de9af50639d47df87f2e15fa36bb07e0f9ed1e9c52c6caa1482788ee9a384d668f1dbd00c54f82aaab163db07d61d2899384b8254da3a9184fc6deca080e2fe
@@ -5332,6 +5332,7 @@ __metadata:
     "@vue/eslint-config-prettier": "npm:^9.0.0"
     "@vue/eslint-config-typescript": "npm:^12.0.0"
     ant-design-vue: "npm:4.x"
+    dayjs: "npm:^1.11.10"
     electron: "npm:^28.2.0"
     electron-builder: "npm:^24.9.1"
     electron-updater: "npm:^6.1.7"

@@ -1,62 +1,225 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { Ref, ref, reactive, h, onMounted } from 'vue'
 import { type UseDraggableReturn, VueDraggable } from 'vue-draggable-plus'
-
-type node = {
-  startTime: string
-  endTime: string
-  title: string
-  info: string
-  type: string
-}
-
-const list: node[] = ref([
-  {
-    startTime: '9:40',
-    endTime: '10:50',
-    title: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-    info: 'info1',
-    type: '1'
-  },
-  {
-    startTime: '9:40',
-    endTime: '10:50',
-    title: 'title2',
-    info: 'info2',
-    type: '2'
-  },
-  {
-    startTime: '9:40',
-    endTime: '10:50',
-    title: 'title3',
-    info: 'info3',
-    type: '1'
-  }
-])
+import dayjs, { Dayjs } from 'dayjs'
+import { DeleteOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons-vue'
 
 const el = ref<UseDraggableReturn>()
+//定义节点类型
+type node = {
+  duration: number
+  percent?: number
+  startTime?: Dayjs
+  endTime?: Dayjs
+  title?: string
+  info?: string
+  type?: number
+}
+//定义工作时间设置
+type config = {
+  rang: [Dayjs, Dayjs]
+  ignoreRang: [Dayjs, Dayjs]
+  min: number
+  max: number
+  step: number
+  initDuration: number
+}
+
+//配置类初始化
+const configImpl = reactive<config>({
+  rang: [dayjs('09:00:00', 'HH:mm:ss'), dayjs('18:00:00', 'HH:mm:ss')],
+  ignoreRang: [dayjs('12:00:00', 'HH:mm:ss'), dayjs('13:00:00', 'HH:mm:ss')],
+  min: 0.5,
+  max: 4.1,
+  step: 0.1,
+  initDuration: 2.5
+})
+
+const list: Ref<node[]> = ref([])
 
 const disabled = ref(false)
-function pause() {
-  el.value?.pause()
+
+const onStart = (e) => {
+  console.log('start', e)
 }
 
-function start() {
-  el.value?.start()
+const onUpdate = (e) => {
+  console.log('update', e)
+  updateList()
+}
+//Drawer 抽屉
+const open = ref<boolean>(false)
+
+const afterOpenChange = (bool: boolean) => {
+  console.log('open', bool)
 }
 
-const onStart = () => {
-  console.log('start')
+//点击悬浮按钮，打开弹层
+const handleClick = () => {
+  open.value = true
 }
 
-const onUpdate = () => {
-  console.log('update')
+//在滑动条上松开鼠标按键时触发
+const onAfterChange = (_value: number) => {
+  updateList()
 }
+
+//更新集合
+const updateList = () => {
+  let startDay: Dayjs = configImpl.rang[0]
+  const endDay: Dayjs = configImpl.rang[1]
+
+  list.value.forEach((item) => {
+    const start = startDay.clone()
+    const diff = union(start, item.duration, configImpl.ignoreRang)
+    const end = startDay.add(diff, 'hour')
+    if (diff > item.duration) {
+      item.info = '总计：' + diff + '小时，工时：' + item.duration + '小时'
+      item.percent = (item.duration / diff) * 100
+    } else {
+      item.info = item.duration + '小时'
+      item.percent = 100
+    }
+
+    item.startTime = start
+    item.endTime = end
+
+    startDay = end
+
+    console.log('下次开始时间', startDay?.format('HH.mm'))
+  })
+}
+
+// 判断两个区间是否相交，相交则返回true
+const isIntersect = (arr1: [Dayjs, Dayjs], arr2: [Dayjs, Dayjs]): boolean => {
+  arr1.sort((a, b) => {
+    if (a.isBefore(b)) {
+      return 0
+    } else {
+      return 1
+    }
+  })
+
+  arr2.sort((a, b) => {
+    if (a.isBefore(b)) {
+      return 0
+    } else {
+      return 1
+    }
+  })
+
+  //最小值
+  let min: Dayjs = arr1[0]
+  //最大值
+  let max: Dayjs = arr1[0]
+  arr1.concat(arr2).forEach((item) => {
+    min = min.isBefore(item) ? min : item
+    max = max.isAfter(item) ? max : item
+
+    // console.log('mix.max', min, max)
+  })
+
+  if (
+    max.diff(min, 'hour', true) <
+    arr1[1].diff(arr1[0], 'hour', true) + arr2[1].diff(arr2[0], 'hour', true)
+  ) {
+    return true
+  } else {
+    return false
+  }
+}
+
+//不相交时，仅返回传入的差值，相交时，返回并集的差值
+const union = (start: Dayjs, duration: number, arr2: [Dayjs, Dayjs]): number => {
+  const end = start.add(duration, 'hour')
+  if (isIntersect([start, end], arr2)) {
+    console.log('相交', duration + arr2[1].diff(arr2[0], 'hour', true))
+    return duration + arr2[1].diff(arr2[0], 'hour', true)
+  } else {
+    console.log('不相交', duration)
+    return duration
+  }
+}
+
+//添加元素
+const add = (_index: number) => {
+  const item: node = {
+    duration: configImpl.initDuration
+  }
+  list.value.push(item)
+  updateList()
+}
+
+//根据下标删除元素
+const del = (index: number) => {
+  list.value.splice(index, 1)
+  updateList()
+}
+
+//当修改了工作时间范围配置后触发
+const timeRangChange = (e) => {
+  configImpl.rang = e
+  updateList()
+}
+
+//当修改了 忽略时间范围触发
+const timeIgnoreRangChange = (e) => {
+  configImpl.ignoreRang = e
+  updateList()
+}
+
+//页面加载完毕后，添加一个元素
+onMounted(() => {
+  add(0)
+})
 </script>
 
 <template>
   <div class="container">
-    <div class="item">
+    <a-float-button @click="handleClick">
+      <template #icon>
+        <SettingOutlined />
+      </template>
+    </a-float-button>
+    <a-drawer
+      v-model:open="open"
+      class="custom-class"
+      root-class-name="root-class-name"
+      :root-style="{ color: 'blue' }"
+      style="color: red"
+      title="Settings"
+      placement="right"
+      @after-open-change="afterOpenChange"
+    >
+      <a-flex gap="middle" vertical>
+        <a-time-range-picker :value="configImpl.rang" :bordered="false" @change="timeRangChange" />
+        <a-time-range-picker
+          :value="configImpl.ignoreRang"
+          :bordered="false"
+          @change="timeIgnoreRangChange"
+        />
+        <a-input-number
+          v-model:value="configImpl.step"
+          style="width: 200px"
+          :min="0.01"
+          :max="1"
+          :step="0.01"
+          string-mode
+        />
+        <a-input-number
+          v-model:value="configImpl.min"
+          style="width: 200px"
+          :min="0.01"
+          :max="4.1"
+          :step="0.01"
+          string-mode
+        />
+      </a-flex>
+    </a-drawer>
+    <div v-if="list.length === 0">
+      <a-button @click="add(0)" type="primary" shape="circle" :icon="h(PlusOutlined)" />
+    </div>
+    <div v-else>
       <ul>
         <VueDraggable
           ref="el"
@@ -73,11 +236,39 @@ const onUpdate = () => {
             <div>
               <div class="title">{{ item.title }}</div>
               <div class="info">{{ item.info }}</div>
+              <a-slider
+                v-model:value="item.duration"
+                :min="configImpl.min"
+                :max="configImpl.max"
+                :step="configImpl.step"
+                @after-change="onAfterChange"
+              />
               <div class="type">{{ item.type }}</div>
+              <div class="operate">
+                <a-flex justify="space-around" align="space-around">
+                  <span>
+                    <a-progress
+                      :stroke-color="{
+                        '0%': '#108ee9',
+                        '100%': '#87d068'
+                      }"
+                      type="circle"
+                      :percent="item.percent"
+                      :size="16"
+                    />
+                  </span>
+                  <span v-if="0 !== index">
+                    <DeleteOutlined @click="del(index)" />
+                  </span>
+                  <span v-if="list.length === index + 1">
+                    <PlusOutlined @click="add(index)" />
+                  </span>
+                </a-flex>
+              </div>
             </div>
             <span class="number">
-              <span>{{ item.startTime }}</span>
-              <span>{{ item.endTime }}</span>
+              <span>{{ item.startTime?.format('HH:mm') }}</span>
+              <span>{{ item.endTime?.format('HH:mm') }}</span>
             </span>
           </li>
         </VueDraggable>
@@ -88,23 +279,15 @@ const onUpdate = () => {
 
 <style lang="css" scoped>
 .container {
-  height: 100vh;
-  width: 100vw;
   display: flex;
-  background: linear-gradient(180deg, #acdecc, #a3e1e5);
   align-items: center;
   justify-content: center;
-}
-
-.item {
-  height: 100vh;
-  width: 100vw;
-  /* background: linear-gradient(0deg, #acdecc, #a3e1e5); */
+  box-sizing: content-box;
 }
 
 .container ul {
-  margin: 0;
-  margin-top: 100px;
+  margin-top: 50px;
+  margin-bottom: 50px;
   list-style: none;
   position: relative;
   padding: 1px 100px;
@@ -180,6 +363,10 @@ const onUpdate = () => {
   font-weight: 600;
   font-size: 12px;
 }
+.container div .operate {
+  align-items: center;
+  justify-content: space-between;
+}
 
 .container div .info {
   font-weight: 300;
@@ -191,6 +378,7 @@ const onUpdate = () => {
 
 .container span.number {
   height: 100%;
+  cursor: pointer;
 }
 
 .container span.number span {

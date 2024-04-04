@@ -24,6 +24,7 @@
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^3.0.0",
     "ant-design-vue": "4.x",
+    "dayjs": "^1.11.10",
     "electron-updater": "^6.1.7",
     "vue-draggable-plus": "^0.3.5"
   },
