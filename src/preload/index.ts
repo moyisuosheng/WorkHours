@@ -1,5 +1,6 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import { log } from 'console'
 
 // Custom APIs for renderer
 const api = {}
@@ -20,3 +21,14 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.api = api
 }
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  setStore: async (key, value) => {
+    console.log('渲染进程的setStore')
+    ipcRenderer.send('setStore', key, value)
+  },
+  getStore: async (key) => {
+    console.log('渲染进程的getStore')
+    return await ipcRenderer.invoke('getStore', key)
+  }
+})

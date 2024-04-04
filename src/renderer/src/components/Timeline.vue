@@ -1,10 +1,25 @@
 <script setup lang="ts">
-import { Ref, ref, reactive, h, onMounted } from 'vue'
+import { Ref, ref, reactive, h, onMounted, onBeforeMount } from 'vue'
 import { type UseDraggableReturn, VueDraggable } from 'vue-draggable-plus'
 import dayjs, { Dayjs } from 'dayjs'
-import { DeleteOutlined, PlusOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  SettingOutlined,
+  SaveOutlined,
+  ImportOutlined
+} from '@ant-design/icons-vue'
+//配置类名称
+const configureName = 'config'
 
 const el = ref<UseDraggableReturn>()
+
+type nodeConfig = {
+  min: number
+  max: number
+  step: number
+}
+
 //定义节点类型
 type node = {
   duration: number
@@ -14,25 +29,87 @@ type node = {
   title?: string
   info?: string
   type?: number
+  config: nodeConfig
 }
 //定义工作时间设置
-type config = {
+type configure = {
   rang: [Dayjs, Dayjs]
   ignoreRang: [Dayjs, Dayjs]
   min: number
   max: number
   step: number
   initDuration: number
+  format: string
+  disabledTime: Dayjs
+}
+
+type RangeDisabledTime = (
+  now: Dayjs,
+  type: 'start' | 'end'
+) => {
+  disabledHours?: () => number[]
+  disabledMinutes?: (selectedHour: number) => number[]
+  disabledSeconds?: (selectedHour: number, selectedMinute: number) => number[]
+}
+
+type DisabledTime = (now: Dayjs) => {
+  disabledHours?: () => number[]
+  disabledMinutes?: (selectedHour: number) => number[]
+  disabledSeconds?: (selectedHour: number, selectedMinute: number) => number[]
+}
+
+const range = (start: number, end: number): number[] => {
+  const result: number[] = []
+  for (let i: number = start; i < end; i++) {
+    result.push(i)
+  }
+  console.log('result', result, start, end)
+
+  return result
+}
+
+const disabledTime: DisabledTime = (now) => {
+  const hour: number = config.value.disabledTime.hour() // 获取当前的小时
+  const minute: number = config.value.disabledTime.minute() // 获取当前的分钟
+  const second: number = config.value.disabledTime.second()
+  return {
+    disabledHours: () => range(0, 24).splice(0, hour),
+
+    disabledMinutes: (selectedHour) => {
+      console.log('selectedHour,hour', selectedHour, hour)
+      if (selectedHour > hour) {
+        console.log('range(0, 60)', range(0, 60))
+        return []
+      } else if ((selectedHour = hour)) {
+        console.log('selectedHour = hour', range(0, minute), minute)
+        return range(0, minute + 1)
+      } else {
+        console.log('range(0, 60).splice(0, min)', range(0, 60).splice(0, minute))
+        return range(0, 60)
+      }
+    },
+    disabledSeconds: (selectedHour, selectedMinute) => {
+      if (selectedHour > hour && selectedMinute > minute) {
+        return []
+      } else if (selectedHour == hour && selectedMinute == minute) {
+        return range(0, second + 1)
+      } else {
+        return range(0, 60)
+      }
+    }
+  }
 }
 
 //配置类初始化
-const configImpl = reactive<config>({
+const config: Ref<configure> = ref<configure>({
   rang: [dayjs('09:00:00', 'HH:mm:ss'), dayjs('18:00:00', 'HH:mm:ss')],
   ignoreRang: [dayjs('12:00:00', 'HH:mm:ss'), dayjs('13:00:00', 'HH:mm:ss')],
   min: 0.5,
   max: 4.1,
   step: 0.1,
-  initDuration: 2.5
+  initDuration: 2.5,
+  format: 'HH:mm',
+  disabledTime: dayjs('09:10:00', 'HH:mm:ss')
 })
 
 const list: Ref<node[]> = ref([])
@@ -66,12 +143,12 @@ const onAfterChange = (_value: number) => {
 
 //更新集合
 const updateList = () => {
-  let startDay: Dayjs = configImpl.rang[0]
-  const endDay: Dayjs = configImpl.rang[1]
+  let startDay: Dayjs = config.value.rang[0]
+  const endDay: Dayjs = config.value.rang[1]
 
   list.value.forEach((item) => {
     const start = startDay.clone()
-    const diff = union(start, item.duration, configImpl.ignoreRang)
+    const diff = union(start, item.duration, config.value.ignoreRang)
     const end = startDay.add(diff, 'hour')
     if (diff > item.duration) {
       item.info = '总计：' + diff + '小时，工时：' + item.duration + '小时'
@@ -86,8 +163,13 @@ const updateList = () => {
 
     startDay = end
 
-    console.log('下次开始时间', startDay?.format('HH.mm'))
+    item.config.min = config.value.min
+    item.config.max = config.value.max
+    item.config.step = config.value.step
+
+    // console.log('下次开始时间', startDay?.format('HH.mm'))
   })
+  console.log('list', list.value)
 }
 
 // 判断两个区间是否相交，相交则返回true
@@ -144,7 +226,12 @@ const union = (start: Dayjs, duration: number, arr2: [Dayjs, Dayjs]): number => 
 //添加元素
 const add = (_index: number) => {
   const item: node = {
-    duration: configImpl.initDuration
+    duration: config.value.initDuration,
+    config: {
+      min: config.value.min,
+      max: config.value.max,
+      step: config.value.step
+    }
   }
   list.value.push(item)
   updateList()
@@ -158,20 +245,86 @@ const del = (index: number) => {
 
 //当修改了工作时间范围配置后触发
 const timeRangChange = (e) => {
-  configImpl.rang = e
+  config.value.rang = e
+  config.value.disabledTime = e[0]
   updateList()
 }
 
 //当修改了 忽略时间范围触发
 const timeIgnoreRangChange = (e) => {
-  configImpl.ignoreRang = e
+  config.value.ignoreRang = e
   updateList()
 }
 
 //页面加载完毕后，添加一个元素
 onMounted(() => {
   add(0)
+  updateList()
 })
+//导入配置文件
+onBeforeMount(async () => {
+  const setting: configure = await window.electronAPI.getStore(configureName)
+  console.log('setting', setting)
+  if (setting) {
+    config.value.rang = []
+    setting.rang.forEach((item) => {
+      config.value.rang.push(dayjs(item))
+    })
+    config.value.ignoreRang = []
+    setting.ignoreRang.forEach((item) => {
+      config.value.ignoreRang.push(dayjs(item))
+    })
+    config.value.min = setting.min
+    config.value.max = setting.max
+    config.value.step = setting.step
+    config.value.initDuration = setting.initDuration
+    config.value.format = setting.format
+    config.value.disabledTime = dayjs(setting.disabledTime)
+  } else {
+    window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
+  }
+})
+
+const saveConfig = async () => {
+  await window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
+}
+const importConfig = async () => {
+  const setting: configure = await window.electronAPI.getStore(configureName)
+  console.log('setting', setting)
+  if (setting) {
+    config.value.rang = []
+    setting.rang.forEach((item) => {
+      config.value.rang.push(dayjs(item))
+    })
+    config.value.ignoreRang = []
+    setting.ignoreRang.forEach((item) => {
+      config.value.ignoreRang.push(dayjs(item))
+    })
+    config.value.min = setting.min
+    config.value.max = setting.max
+    config.value.step = setting.step
+    config.value.initDuration = setting.initDuration
+    config.value.format = setting.format
+    config.value.disabledTime = dayjs(setting.disabledTime)
+    updateList()
+  } else {
+    window.electronAPI.setStore(
+      configureName,
+      JSON.parse(
+        JSON.stringify({
+          rang: [dayjs('09:00:00', 'HH:mm:ss'), dayjs('18:00:00', 'HH:mm:ss')],
+          ignoreRang: [dayjs('12:00:00', 'HH:mm:ss'), dayjs('13:00:00', 'HH:mm:ss')],
+          min: 0.5,
+          max: 4.1,
+          step: 0.1,
+          initDuration: 2.5,
+          format: 'HH:mm',
+          disabledTime: dayjs('09:00:00', 'HH:mm:ss')
+        })
+      )
+    )
+  }
+}
 </script>
 
 <template>
@@ -192,32 +345,89 @@ onMounted(() => {
       @after-open-change="afterOpenChange"
     >
       <a-flex gap="middle" vertical>
-        <a-time-range-picker :value="configImpl.rang" :bordered="false" @change="timeRangChange" />
-        <a-time-range-picker
-          :value="configImpl.ignoreRang"
-          :bordered="false"
-          @change="timeIgnoreRangChange"
-        />
-        <a-input-number
-          v-model:value="configImpl.step"
-          style="width: 200px"
-          :min="0.01"
-          :max="1"
-          :step="0.01"
-          string-mode
-        />
-        <a-input-number
-          v-model:value="configImpl.min"
-          style="width: 200px"
-          :min="0.01"
-          :max="4.1"
-          :step="0.01"
-          string-mode
-        />
+        <div>
+          <div class="card-title">工作时间区间</div>
+          <a-time-range-picker
+            :value="config.rang"
+            :bordered="false"
+            :allow-clear="false"
+            :format="config.format"
+            @change="timeRangChange"
+          />
+        </div>
+        <div>
+          <div class="card-title">午休时间区间</div>
+          <a-time-range-picker
+            :value="config.ignoreRang"
+            :bordered="false"
+            :allow-clear="false"
+            :format="config.format"
+            :disabled-time="disabledTime"
+            @change="timeIgnoreRangChange"
+          />
+        </div>
+
+        <div>
+          <div class="card-title">步长</div>
+          <a-row>
+            <a-col :span="12">
+              <a-slider v-model:value="config.step" :min="0.01" :max="1" :step="0.01" />
+            </a-col>
+            <a-col :span="4">
+              <a-input-number
+                v-model:value="config.step"
+                :min="0.01"
+                :max="1"
+                :step="0.01"
+                style="margin-left: 16px"
+              />
+            </a-col>
+          </a-row>
+        </div>
+        <div>
+          <div class="card-title">最小工时</div>
+          <a-row>
+            <a-col :span="12">
+              <a-slider v-model:value="config.min" :min="0.01" :max="8.0" :step="0.01" />
+            </a-col>
+            <a-col :span="4">
+              <a-input-number
+                v-model:value="config.min"
+                :min="0.01"
+                :max="8.0"
+                :step="0.01"
+                style="margin-left: 16px"
+              />
+            </a-col>
+          </a-row>
+        </div>
+        <div>
+          <div class="card-title">最大工时</div>
+          <a-row>
+            <a-col :span="12">
+              <a-slider v-model:value="config.max" :min="0.01" :max="8.0" :step="0.01" />
+            </a-col>
+            <a-col :span="4">
+              <a-input-number
+                v-model:value="config.max"
+                :min="0.01"
+                :max="8.0"
+                :step="0.01"
+                style="margin-left: 16px"
+              />
+            </a-col>
+          </a-row>
+        </div>
       </a-flex>
+      <template #extra>
+        <a-space>
+          <a-button type="primary" shape="circle" :icon="h(ImportOutlined)" @click="importConfig" />
+          <a-button type="primary" shape="circle" :icon="h(SaveOutlined)" @click="saveConfig" />
+        </a-space>
+      </template>
     </a-drawer>
     <div v-if="list.length === 0">
-      <a-button @click="add(0)" type="primary" shape="circle" :icon="h(PlusOutlined)" />
+      <a-button :icon="h(PlusOutlined)" type="primary" shape="circle" @click="add(0)" />
     </div>
     <div v-else>
       <ul>
@@ -238,14 +448,14 @@ onMounted(() => {
               <div class="info">{{ item.info }}</div>
               <a-slider
                 v-model:value="item.duration"
-                :min="configImpl.min"
-                :max="configImpl.max"
-                :step="configImpl.step"
+                :min="item?.config?.min"
+                :max="item?.config?.max"
+                :step="item?.config?.step"
                 @after-change="onAfterChange"
               />
               <div class="type">{{ item.type }}</div>
               <div class="operate">
-                <a-flex justify="space-around" align="space-around">
+                <a-flex justify="space-around">
                   <span>
                     <a-progress
                       :stroke-color="{
@@ -394,5 +604,8 @@ onMounted(() => {
 
 .container span.number span:last-child {
   top: 100%;
+}
+.card-title {
+  color: #86b7e7;
 }
 </style>
