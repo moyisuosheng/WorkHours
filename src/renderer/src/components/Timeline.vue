@@ -473,7 +473,7 @@ const importConfig = async () => {
               </div>
             </div>
             <span class="number">
-              <span @click="copy(item.startTime as Dayjs)">{{
+              <span @click="copy(item.startTime as Dayjs)" @click="copy(item.startTime as Dayjs)">{{
                 item.startTime?.format('HH:mm')
               }}</span>
               <span @click="copy(item.endTime as Dayjs)">{{ item.endTime?.format('HH:mm') }}</span>
