@@ -40,7 +40,9 @@ type configure = {
   max: number
   step: number
   initDuration: number
-  format: string
+  timeRangeformat: string
+  displayFormat: string
+  copyFormat: string
   disabledTime: Dayjs
 }
 
@@ -100,8 +102,10 @@ const config: Ref<configure> = ref<configure>({
   max: 4.1,
   step: 0.1,
   initDuration: 2.5,
-  format: 'HH:mm',
-  disabledTime: dayjs('09:10:00', 'HH:mm:ss')
+  timeRangeformat: 'HH:mm',
+  disabledTime: dayjs('09:10:00', 'HH:mm:ss'),
+  displayFormat: 'YYYY-MM-DD HH:mm:ss',
+  copyFormat: 'YYYY-MM-DD HH:mm:ss'
 })
 
 const list: Ref<node[]> = ref([])
@@ -142,11 +146,15 @@ const updateList = () => {
     const diff = union(start, item.duration, config.value.ignoreRang)
     const end = startDay.add(diff, 'hour')
     if (diff > item.duration) {
-      item.info = '总计：' + diff + '小时，工时：' + item.duration + '小时'
-      item.percent = (item.duration / diff) * 100
+      item.title = '总计：' + diff + '小时'
+      item.info = '工时：' + item.duration + '小时'
+      item.percent = Math.round((item.duration / diff) * 100 * 100) / 100
+      item.type = 1
     } else {
-      item.info = item.duration + '小时'
+      item.title = '总计：' + diff + '小时'
+      item.info = '工时：' + item.duration + '小时'
       item.percent = 100
+      item.type = 0
     }
 
     item.startTime = start
@@ -160,7 +168,6 @@ const updateList = () => {
 
     // console.log('下次开始时间', startDay?.format('HH.mm'))
   })
-  console.log('list', list.value)
 }
 
 // 判断两个区间是否相交，相交则返回true
@@ -206,10 +213,8 @@ const isIntersect = (arr1: [Dayjs, Dayjs], arr2: [Dayjs, Dayjs]): boolean => {
 const union = (start: Dayjs, duration: number, arr2: [Dayjs, Dayjs]): number => {
   const end = start.add(duration, 'hour')
   if (isIntersect([start, end], arr2)) {
-    console.log('相交', duration + arr2[1].diff(arr2[0], 'hour', true))
     return duration + arr2[1].diff(arr2[0], 'hour', true)
   } else {
-    console.log('不相交', duration)
     return duration
   }
 }
@@ -247,17 +252,6 @@ const timeIgnoreRangChange = (e) => {
   updateList()
 }
 
-//复制内容到剪切板
-const copy = async (dayjs: Dayjs) => {
-  try {
-    const text = dayjs.format('HH:mm:ss')
-    await navigator.clipboard.writeText(text)
-    message.success('复制成功：' + text)
-  } catch (err) {
-    console.error('Failed to copy: ', err)
-  }
-}
-
 //页面加载完毕后，添加一个元素
 onMounted(() => {
   add(0)
@@ -265,66 +259,50 @@ onMounted(() => {
 })
 //导入配置文件
 onBeforeMount(async () => {
-  const setting: configure = (await window.electronAPI.getStore(configureName)) as configure
-  if (setting) {
-    config.value.rang[0] = dayjs(setting.rang[0])
-    config.value.rang[1] = dayjs(setting.rang[1])
-
-    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0])
-    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1])
-
-    config.value.min = setting.min
-    config.value.max = setting.max
-    config.value.step = setting.step
-    config.value.initDuration = setting.initDuration
-    config.value.format = setting.format
-    config.value.disabledTime = dayjs(setting.disabledTime)
-  } else {
-    window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
-  }
+  await importConfig(false)
 })
 
 const saveConfig = async () => {
   await window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
+  message.success('已保存当前配置！')
 }
-const importConfig = async () => {
-  const setting: configure = (await window.electronAPI.getStore(configureName)) as configure
+
+//将读取的配置赋值给当前配置类对象中
+const importSetting = async (setting: configure) => {
   if (setting) {
-    config.value.rang[0] = dayjs(setting.rang[0])
-    config.value.rang[1] = dayjs(setting.rang[1])
+    config.value.rang[0] = dayjs(setting.rang[0]) ?? config.value.rang[0]
+    config.value.rang[1] = dayjs(setting.rang[1]) ?? config.value.rang[1]
 
-    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0])
-    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1])
+    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0]) ?? config.value.ignoreRang[0]
+    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1]) ?? config.value.ignoreRang[1]
 
-    config.value.min = setting.min
-    config.value.max = setting.max
-    config.value.step = setting.step
-    config.value.initDuration = setting.initDuration
-    config.value.format = setting.format
-    config.value.disabledTime = dayjs(setting.disabledTime)
+    config.value.min = setting.min ?? config.value.min
+    config.value.max = setting.max ?? config.value.max
+    config.value.step = setting.step ?? config.value.step
+    config.value.initDuration = setting.initDuration ?? config.value.initDuration
+    config.value.timeRangeformat = setting.timeRangeformat ?? config.value.timeRangeformat
+    config.value.displayFormat = setting.displayFormat ?? config.value.displayFormat
+    config.value.copyFormat = setting.copyFormat ?? config.value.copyFormat
+    config.value.disabledTime = dayjs(setting.disabledTime) ?? config.value.disabledTime
+
     updateList()
   } else {
-    window.electronAPI.setStore(
-      configureName,
-      JSON.parse(
-        JSON.stringify({
-          rang: [dayjs('09:00:00', 'HH:mm:ss'), dayjs('18:00:00', 'HH:mm:ss')],
-          ignoreRang: [dayjs('12:00:00', 'HH:mm:ss'), dayjs('13:00:00', 'HH:mm:ss')],
-          min: 0.5,
-          max: 4.1,
-          step: 0.1,
-          initDuration: 2.5,
-          format: 'HH:mm',
-          disabledTime: dayjs('09:00:00', 'HH:mm:ss')
-        })
-      )
-    )
+    window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
+  }
+}
+//读取配置文件
+const importConfig = async (isMessage: boolean) => {
+  const setting: configure = (await window.electronAPI.getStore(configureName)) as configure
+  await importSetting(setting)
+  //通过闭包控制，第一次的时候不提示
+  if (isMessage) {
+    message.success('已从文件中读取配置！')
   }
 }
 </script>
 
 <template>
-  <div class="container">
+  <div id="container" class="container">
     <a-float-button @click="handleClick">
       <template #icon>
         <SettingOutlined />
@@ -347,7 +325,7 @@ const importConfig = async () => {
             :value="config.rang"
             :bordered="false"
             :allow-clear="false"
-            :format="config.format"
+            :format="config.timeRangeformat"
             @change="timeRangChange"
           />
         </div>
@@ -357,7 +335,7 @@ const importConfig = async () => {
             :value="config.ignoreRang"
             :bordered="false"
             :allow-clear="false"
-            :format="config.format"
+            :format="config.timeRangeformat"
             :disabled-time="disabledTime"
             @change="timeIgnoreRangChange"
           />
@@ -414,11 +392,34 @@ const importConfig = async () => {
             </a-col>
           </a-row>
         </div>
+
+        <div>
+          <div class="card-title">显示格式</div>
+          <a-row>
+            <a-typography-text code>{{ config.displayFormat }}</a-typography-text>
+          </a-row>
+        </div>
+
+        <div>
+          <div class="card-title">拷贝格式</div>
+          <a-row>
+            <a-typography-text code>{{ config.copyFormat }}</a-typography-text>
+          </a-row>
+        </div>
       </a-flex>
       <template #extra>
         <a-space>
-          <a-button type="primary" shape="circle" :icon="h(ImportOutlined)" @click="importConfig" />
-          <a-button type="primary" shape="circle" :icon="h(SaveOutlined)" @click="saveConfig" />
+          <a-tooltip title="read">
+            <a-button
+              type="primary"
+              shape="circle"
+              :icon="h(ImportOutlined)"
+              @click="importConfig(true)"
+            />
+          </a-tooltip>
+          <a-tooltip title="save">
+            <a-button type="primary" shape="circle" :icon="h(SaveOutlined)" @click="saveConfig" />
+          </a-tooltip>
         </a-space>
       </template>
     </a-drawer>
@@ -438,50 +439,70 @@ const importConfig = async () => {
           @update="onUpdate"
         >
           <li v-for="(item, index) in list" :key="index">
-            <span></span>
             <div>
-              <div class="title">{{ item.title }}</div>
-              <div class="info">{{ item.info }}</div>
+              <div class="title">{{ item.title ?? '' }}</div>
+              <div v-show="item.type === 1" class="info">
+                <a-typography-paragraph :copyable="{ tooltip: false, text: item.duration ?? 0 }">
+                  {{ item.info ?? '' }}
+                </a-typography-paragraph>
+              </div>
               <a-slider
                 v-model:value="item.duration"
-                :min="item?.config?.min"
-                :max="item?.config?.max"
-                :step="item?.config?.step"
+                :min="item?.config?.min ?? 0.1"
+                :max="item?.config?.max ?? 4.1"
+                :step="item?.config?.step ?? 0.01"
                 @after-change="onAfterChange"
               />
-              <div class="type">{{ item.type }}</div>
               <div class="operate">
-                <a-flex justify="space-around">
-                  <span>
-                    <a-progress
-                      :stroke-color="{
-                        '0%': '#108ee9',
-                        '100%': '#87d068'
-                      }"
-                      type="circle"
-                      :percent="item.percent"
-                      :size="16"
-                    />
-                  </span>
-                  <span v-if="0 !== index">
-                    <DeleteOutlined @click="del(index)" />
-                  </span>
-                  <span v-if="list.length === index + 1">
-                    <PlusOutlined @click="add(index)" />
-                  </span>
-                </a-flex>
+                <a-row justify="space-around" :align="'middle'">
+                  <a-col :span="8">
+                    <a-flex gap="middle" :align="'center'" vertical>
+                      <span>
+                        <a-progress
+                          :stroke-color="{
+                            '0%': '#108ee9',
+                            '100%': '#87d068'
+                          }"
+                          type="circle"
+                          :percent="item.percent ?? 100"
+                          :size="16"
+                        />
+                      </span>
+                    </a-flex>
+                  </a-col>
+                  <a-col :span="8">
+                    <a-flex gap="middle" :align="'center'" vertical
+                      ><span v-show="list.length === index + 1">
+                        <PlusOutlined @click="add(index)" />
+                      </span>
+                    </a-flex>
+                  </a-col>
+                  <a-col :span="8">
+                    <a-flex gap="middle" :align="'center'" vertical>
+                      <span v-show="0 !== index"> <DeleteOutlined @click="del(index)" /> </span>
+                    </a-flex>
+                  </a-col>
+                </a-row>
               </div>
             </div>
-            <span class="number">
-              <span @click="copy(item.startTime as Dayjs)">{{
-                item.startTime?.format('HH:mm')
-              }}</span>
-              <span @click="copy(item.endTime as Dayjs)">{{ item.endTime?.format('HH:mm') }}</span>
+            <span class="number" :style="{ height: (item.percent ?? 100) + '%' }">
+              <span>
+                <a-typography-paragraph :copyable="{ tooltip: false }" class="start-time-text">
+                  {{ item.startTime?.format(config.displayFormat ?? 'YYYY-MM-DD HH:mm:ss') }}
+                </a-typography-paragraph>
+              </span>
+
+              <span>
+                <a-typography-paragraph :copyable="{ tooltip: false }" class="end-time-text">
+                  {{ item.endTime?.format(config.displayFormat ?? 'YYYY-MM-DD HH:mm:ss') }}
+                </a-typography-paragraph>
+              </span>
             </span>
           </li>
         </VueDraggable>
       </ul>
     </div>
+    <a-back-top />
   </div>
 </template>
 
@@ -529,7 +550,7 @@ const importConfig = async () => {
 
 .container ul li > span {
   width: 2px;
-  height: 100%;
+  /* height: 100%; */
   background: #fff;
   left: -30px;
   top: 0;
@@ -585,14 +606,15 @@ const importConfig = async () => {
 }
 
 .container span.number {
-  height: 100%;
   cursor: pointer;
 }
 
 .container span.number span {
   position: absolute;
-  font-size: 10px;
-  left: -35px;
+  font-size: 14px;
+  right: 20px;
+  width: 180px;
+  text-align: end;
   font-weight: bold;
 }
 
@@ -605,5 +627,11 @@ const importConfig = async () => {
 }
 .card-title {
   color: #86b7e7;
+}
+.start-time-text {
+  color: #ffffff;
+}
+.end-time-text {
+  color: #7993b7;
 }
 </style>
