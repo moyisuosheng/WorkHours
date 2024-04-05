@@ -2,6 +2,7 @@
 import { Ref, ref, h, onMounted, onBeforeMount } from 'vue'
 import { type UseDraggableReturn, VueDraggable } from 'vue-draggable-plus'
 import dayjs, { Dayjs } from 'dayjs'
+import { message } from 'ant-design-vue'
 import {
   DeleteOutlined,
   PlusOutlined,
@@ -246,6 +247,17 @@ const timeIgnoreRangChange = (e) => {
   updateList()
 }
 
+//复制内容到剪切板
+const copy = async (dayjs: Dayjs) => {
+  try {
+    const text = dayjs.format('HH:mm:ss')
+    await navigator.clipboard.writeText(text)
+    message.success('复制成功：' + text)
+  } catch (err) {
+    console.error('Failed to copy: ', err)
+  }
+}
+
 //页面加载完毕后，添加一个元素
 onMounted(() => {
   add(0)
@@ -461,8 +473,12 @@ const importConfig = async () => {
               </div>
             </div>
             <span class="number">
-              <span>{{ item.startTime?.format('HH:mm') }}</span>
-              <span>{{ item.endTime?.format('HH:mm') }}</span>
+              <span @click="copy(item.startTime as Dayjs)">{{
+                item.startTime?.format('HH:mm')
+              }}</span>
+              <span @click="copy(item.endTime as Dayjs)">{{
+                item.endTime?.format('HH:mm')
+              }}</span>
             </span>
           </li>
         </VueDraggable>
@@ -480,8 +496,8 @@ const importConfig = async () => {
 }
 
 .container ul {
-  margin-top: 50px;
-  margin-bottom: 50px;
+  margin-top: 60px;
+  margin-bottom: 60px;
   list-style: none;
   position: relative;
   padding: 1px 100px;
