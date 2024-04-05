@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ref, ref, reactive, h, onMounted, onBeforeMount } from 'vue'
+import { Ref, ref, h, onMounted, onBeforeMount } from 'vue'
 import { type UseDraggableReturn, VueDraggable } from 'vue-draggable-plus'
 import dayjs, { Dayjs } from 'dayjs'
 import {
@@ -43,15 +43,6 @@ type configure = {
   disabledTime: Dayjs
 }
 
-type RangeDisabledTime = (
-  now: Dayjs,
-  type: 'start' | 'end'
-) => {
-  disabledHours?: () => number[]
-  disabledMinutes?: (selectedHour: number) => number[]
-  disabledSeconds?: (selectedHour: number, selectedMinute: number) => number[]
-}
-
 type DisabledTime = (now: Dayjs) => {
   disabledHours?: () => number[]
   disabledMinutes?: (selectedHour: number) => number[]
@@ -68,7 +59,7 @@ const range = (start: number, end: number): number[] => {
   return result
 }
 
-const disabledTime: DisabledTime = (now) => {
+const disabledTime: DisabledTime = (_now) => {
   const hour: number = config.value.disabledTime.hour() // 获取当前的小时
   const minute: number = config.value.disabledTime.minute() // 获取当前的分钟
   const second: number = config.value.disabledTime.second()
@@ -144,7 +135,6 @@ const onAfterChange = (_value: number) => {
 //更新集合
 const updateList = () => {
   let startDay: Dayjs = config.value.rang[0]
-  const endDay: Dayjs = config.value.rang[1]
 
   list.value.forEach((item) => {
     const start = startDay.clone()
@@ -263,17 +253,14 @@ onMounted(() => {
 })
 //导入配置文件
 onBeforeMount(async () => {
-  const setting: configure = await window.electronAPI.getStore(configureName)
-  console.log('setting', setting)
+  const setting: configure = (await window.electronAPI.getStore(configureName)) as configure
   if (setting) {
-    config.value.rang = []
-    setting.rang.forEach((item) => {
-      config.value.rang.push(dayjs(item))
-    })
-    config.value.ignoreRang = []
-    setting.ignoreRang.forEach((item) => {
-      config.value.ignoreRang.push(dayjs(item))
-    })
+    config.value.rang[0] = dayjs(setting.rang[0])
+    config.value.rang[1] = dayjs(setting.rang[1])
+
+    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0])
+    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1])
+
     config.value.min = setting.min
     config.value.max = setting.max
     config.value.step = setting.step
@@ -289,17 +276,14 @@ const saveConfig = async () => {
   await window.electronAPI.setStore(configureName, JSON.parse(JSON.stringify(config.value)))
 }
 const importConfig = async () => {
-  const setting: configure = await window.electronAPI.getStore(configureName)
-  console.log('setting', setting)
+  const setting: configure = (await window.electronAPI.getStore(configureName)) as configure
   if (setting) {
-    config.value.rang = []
-    setting.rang.forEach((item) => {
-      config.value.rang.push(dayjs(item))
-    })
-    config.value.ignoreRang = []
-    setting.ignoreRang.forEach((item) => {
-      config.value.ignoreRang.push(dayjs(item))
-    })
+    config.value.rang[0] = dayjs(setting.rang[0])
+    config.value.rang[1] = dayjs(setting.rang[1])
+
+    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0])
+    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1])
+
     config.value.min = setting.min
     config.value.max = setting.max
     config.value.step = setting.step

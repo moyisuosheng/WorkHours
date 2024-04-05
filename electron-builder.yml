@@ -1,4 +1,4 @@
-appId: com.electron.app
+appId: com.myss.workHours.app
 productName: workhours
 directories:
   buildResources: build
