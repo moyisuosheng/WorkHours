@@ -11,6 +11,7 @@ function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
+    title: 'WorkHours',
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon: appIcon } : { icon: appPng }),
