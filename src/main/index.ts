@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import appPng from '../../resources/workHours.png?asset'
+import appPng from '../../resources/workHours.icns?asset'
 import appIcon from '../../resources/workHours.ico?asset'
 import Store from 'electron-store'
 const store = new Store()

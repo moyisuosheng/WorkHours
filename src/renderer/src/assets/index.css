@@ -4,27 +4,14 @@ html {
 }
 body {
   margin: 0px;
-  /* background-image: -webkit-linear-gradient(
-    60deg,
-    rgba(218, 169, 215, 0.637),
-    rgba(128, 174, 235, 0.904)
-  ); */
-
+  /* 实现渐变背景全覆盖 */
   background: linear-gradient(180deg, #acdecc, #a3e1e5);
-
   background-position: center 0;
-
   background-repeat: no-repeat;
-
   background-attachment: fixed;
-
   -ms-background-size: cover;
-
   -webkit-background-size: cover;
-
   -o-background-size: cover;
-
   -moz-background-size: cover;
-
   background-size: cover;
 }

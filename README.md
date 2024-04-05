@@ -37,3 +37,5 @@ $ yarn build:linux
 
 1、使用yarn@4.1.0，因为electron-builder不支持yarn新版的的`pnp`，所以在`.yarnrc.yml`文件设定了 nodeLinker: node-modules。
 
+2、通过`electron-builder`打包时、需要提供256像素×256像素大小的图标，否则失败。
+
