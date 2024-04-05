@@ -23,11 +23,9 @@ if (process.contextIsolated) {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   setStore: async (key, value) => {
-    console.log('渲染进程的setStore')
     ipcRenderer.send('setStore', key, value)
   },
   getStore: async (key) => {
-    console.log('渲染进程的getStore')
     return await ipcRenderer.invoke('getStore', key)
   }
 })
