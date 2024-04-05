@@ -441,7 +441,7 @@ const importConfig = async (isMessage: boolean) => {
           <li v-for="(item, index) in list" :key="index">
             <div>
               <div class="title">{{ item.title ?? '' }}</div>
-              <div v-show="item.type === 1" class="info">
+              <div class="info">
                 <a-typography-paragraph :copyable="{ tooltip: false, text: item.duration ?? 0 }">
                   {{ item.info ?? '' }}
                 </a-typography-paragraph>
