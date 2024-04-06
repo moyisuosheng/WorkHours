@@ -8,7 +8,8 @@ import {
   PlusOutlined,
   SettingOutlined,
   SaveOutlined,
-  ImportOutlined
+  ImportOutlined,
+  PushpinOutlined
 } from '@ant-design/icons-vue'
 //配置类名称
 const configureName = 'config'
@@ -52,6 +53,9 @@ type DisabledTime = (now: Dayjs) => {
   disabledSeconds?: (selectedHour: number, selectedMinute: number) => number[]
 }
 
+//是否置顶
+const topping = ref<boolean>(false)
+
 const range = (start: number, end: number): number[] => {
   const result: number[] = []
   for (let i: number = start; i < end; i++) {
@@ -62,6 +66,7 @@ const range = (start: number, end: number): number[] => {
   return result
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const disabledTime: DisabledTime = (_now) => {
   const hour: number = config.value.disabledTime.hour() // 获取当前的小时
   const minute: number = config.value.disabledTime.minute() // 获取当前的分钟
@@ -110,6 +115,7 @@ const config: Ref<configure> = ref<configure>({
 
 const list: Ref<node[]> = ref([])
 
+//抽屉是否打开
 const disabled = ref(false)
 
 const onStart = (e) => {
@@ -132,7 +138,17 @@ const handleClick = () => {
   open.value = true
 }
 
+const pushpin = () => {
+  topping.value = !topping.value
+  if (topping.value) {
+    window.electronAPI.setTop()
+  } else {
+    window.electronAPI.cancelTop()
+  }
+}
+
 //在滑动条上松开鼠标按键时触发
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onAfterChange = (_value: number) => {
   updateList()
 }
@@ -220,6 +236,7 @@ const union = (start: Dayjs, duration: number, arr2: [Dayjs, Dayjs]): number => 
 }
 
 //添加元素
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const add = (_index: number) => {
   const item: node = {
     duration: config.value.initDuration,
@@ -303,11 +320,21 @@ const importConfig = async (isMessage: boolean) => {
 
 <template>
   <div id="container" class="container">
-    <a-float-button @click="handleClick">
-      <template #icon>
-        <SettingOutlined />
-      </template>
-    </a-float-button>
+    <a-float-button-group shape="circle" :style="{ right: '24px' }">
+      <a-float-button @click="handleClick">
+        <template #icon>
+          <SettingOutlined />
+        </template>
+      </a-float-button>
+
+      <a-float-button @click="pushpin">
+        <template #icon>
+          <PushpinOutlined :class="{ 'rotate-start': topping, 'rotate-end': !topping }" />
+        </template>
+      </a-float-button>
+      <a-back-top :visibility-height="0" />
+    </a-float-button-group>
+
     <a-drawer
       v-model:open="open"
       class="custom-class"
@@ -517,6 +544,7 @@ const importConfig = async (isMessage: boolean) => {
 .container ul {
   margin-top: 60px;
   margin-bottom: 60px;
+  margin-left: 80px;
   list-style: none;
   position: relative;
   padding: 1px 100px;
@@ -633,5 +661,15 @@ const importConfig = async (isMessage: boolean) => {
 }
 .end-time-text {
   color: #7993b7;
+}
+.rotate-start {
+  -webkit-transform: rotate(-45deg);
+  transform: rotate(-45deg);
+  -webkit-transition: -webkit-transform 500ms linear;
+  transition: transform 500ms linear;
+}
+.rotate-end {
+  -webkit-transition: -webkit-transform 500ms linear;
+  transition: transform 500ms linear;
 }
 </style>

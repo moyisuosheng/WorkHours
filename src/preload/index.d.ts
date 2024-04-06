@@ -9,5 +9,7 @@ declare global {
   interface electronAPI {
     setStore: (key, value) => void
     getStore: (key) => unknown
+    setTop: () => void
+    cancelTop: () => void
   }
 }
