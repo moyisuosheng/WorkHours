@@ -27,5 +27,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getStore: async (key) => {
     return await ipcRenderer.invoke('getStore', key)
+  },
+  setTop: async () => {
+    ipcRenderer.send('setTop')
+  },
+  cancelTop: async () => {
+    ipcRenderer.send('cancelTop')
   }
 })

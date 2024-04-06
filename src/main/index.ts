@@ -6,9 +6,11 @@ import appIcon from '../../resources/icon.ico?asset'
 import Store from 'electron-store'
 const store = new Store()
 
+let mainWindow: BrowserWindow
+
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     title: 'WorkHours',
@@ -61,6 +63,16 @@ app.whenReady().then(() => {
   ipcMain.handle('getStore', async (_, key) => {
     const value = await store.get(key)
     return value
+  })
+
+  ipcMain.on('setTop', async () => {
+    //窗体置顶，窗体级别（由低到高）：normal, floating, torn-off-menu, modal-panel, main-menu, status, pop-up-menu, screen-saver
+    mainWindow?.setAlwaysOnTop(true, 'screen-saver')
+  })
+
+  ipcMain.on('cancelTop', async () => {
+    //取消窗体置顶
+    mainWindow?.setAlwaysOnTop(false)
   })
 
   createWindow()
