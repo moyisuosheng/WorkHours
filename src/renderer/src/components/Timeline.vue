@@ -287,11 +287,13 @@ const saveConfig = async () => {
 //将读取的配置赋值给当前配置类对象中
 const importSetting = async (setting: configure) => {
   if (setting) {
-    config.value.rang[0] = dayjs(setting.rang[0]) ?? config.value.rang[0]
-    config.value.rang[1] = dayjs(setting.rang[1]) ?? config.value.rang[1]
+    config.value.rang[0] = dayjs(dayjs.min(setting.rang), 'HH:mm') ?? config.value.rang[0]
+    config.value.rang[1] = dayjs(dayjs.max(setting.rang), 'HH:mm') ?? config.value.rang[1]
 
-    config.value.ignoreRang[0] = dayjs(setting.ignoreRang[0]) ?? config.value.ignoreRang[0]
-    config.value.ignoreRang[1] = dayjs(setting.ignoreRang[1]) ?? config.value.ignoreRang[1]
+    config.value.ignoreRang[0] =
+      dayjs(dayjs.min(setting.ignoreRang), 'HH:mm') ?? config.value.ignoreRang[0]
+    config.value.ignoreRang[1] =
+      dayjs(dayjs.max(setting.ignoreRang), 'HH:mm') ?? config.value.ignoreRang[1]
 
     config.value.min = setting.min ?? config.value.min
     config.value.max = setting.max ?? config.value.max
