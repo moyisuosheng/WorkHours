@@ -25,6 +25,7 @@ type nodeConfig = {
 //定义节点类型
 type node = {
   duration: number
+  expectDuration: number
   percent?: number
   startTime?: Dayjs
   endTime?: Dayjs
@@ -45,6 +46,7 @@ type configure = {
   displayFormat: string
   copyFormat: string
   disabledTime: Dayjs
+  redundantDuration: number
 }
 
 type DisabledTime = (now: Dayjs) => {
@@ -109,8 +111,9 @@ const config: Ref<configure> = ref<configure>({
   initDuration: 2.5,
   timeRangeformat: 'HH:mm',
   disabledTime: dayjs('09:10:00', 'HH:mm:ss'),
-  displayFormat: 'YYYY-MM-DD HH:mm:ss',
-  copyFormat: 'YYYY-MM-DD HH:mm:ss'
+  displayFormat: 'YYYY/MM/DD HH:mm:ss',
+  copyFormat: 'YYYY/MM/DD HH:mm:ss',
+  redundantDuration: 0.1
 })
 
 const list: Ref<node[]> = ref([])
@@ -172,6 +175,7 @@ const updateList = () => {
       item.percent = 100
       item.type = 0
     }
+    item.expectDuration = config.value.initDuration + config.value.redundantDuration
 
     item.startTime = start
     item.endTime = end
@@ -240,6 +244,7 @@ const union = (start: Dayjs, duration: number, arr2: [Dayjs, Dayjs]): number => 
 const add = (_index: number) => {
   const item: node = {
     duration: config.value.initDuration,
+    expectDuration: config.value.initDuration + config.value.redundantDuration,
     config: {
       min: config.value.min,
       max: config.value.max,
@@ -287,13 +292,53 @@ const saveConfig = async () => {
 //将读取的配置赋值给当前配置类对象中
 const importSetting = async (setting: configure) => {
   if (setting) {
-    config.value.rang[0] = dayjs(dayjs.min(setting.rang), 'HH:mm') ?? config.value.rang[0]
-    config.value.rang[1] = dayjs(dayjs.max(setting.rang), 'HH:mm') ?? config.value.rang[1]
+    config.value.rang[0] =
+      dayjs(
+        dayjs
+          .min(
+            setting.rang.map((item) => {
+              return dayjs(item)
+            })
+          )
+          ?.format('HH:mm'),
+        'HH:mm'
+      ) ?? dayjs('9:00', 'HH:mm')
+
+    config.value.rang[1] =
+      dayjs(
+        dayjs
+          .max(
+            setting.rang.map((item) => {
+              return dayjs(item)
+            })
+          )
+          ?.format('HH:mm'),
+        'HH:mm'
+      ) ?? dayjs('18:00', 'HH:mm')
 
     config.value.ignoreRang[0] =
-      dayjs(dayjs.min(setting.ignoreRang), 'HH:mm') ?? config.value.ignoreRang[0]
+      dayjs(
+        dayjs
+          .min(
+            setting.ignoreRang.map((item) => {
+              return dayjs(item)
+            })
+          )
+          ?.format('HH:mm'),
+        'HH:mm'
+      ) ?? dayjs('12:00', 'HH:mm')
+
     config.value.ignoreRang[1] =
-      dayjs(dayjs.max(setting.ignoreRang), 'HH:mm') ?? config.value.ignoreRang[1]
+      dayjs(
+        dayjs
+          .max(
+            setting.ignoreRang.map((item) => {
+              return dayjs(item)
+            })
+          )
+          ?.format('HH:mm'),
+        'HH:mm'
+      ) ?? dayjs('13:00', 'HH:mm')
 
     config.value.min = setting.min ?? config.value.min
     config.value.max = setting.max ?? config.value.max
@@ -421,18 +466,45 @@ const importConfig = async (isMessage: boolean) => {
             </a-col>
           </a-row>
         </div>
-
+        <div>
+          <div class="card-title">冗余工时</div>
+          <a-row>
+            <a-col :span="12">
+              <a-slider
+                v-model:value="config.redundantDuration"
+                :min="0.01"
+                :max="0.5"
+                :step="0.01"
+              />
+            </a-col>
+            <a-col :span="4">
+              <a-input-number
+                v-model:value="config.redundantDuration"
+                :min="0.01"
+                :max="8.0"
+                :step="0.01"
+                style="margin-left: 16px"
+              />
+            </a-col>
+          </a-row>
+        </div>
         <div>
           <div class="card-title">显示格式</div>
           <a-row>
-            <a-typography-text code>{{ config.displayFormat }}</a-typography-text>
+            <a-typography-paragraph
+              v-model:content="config.displayFormat"
+              :editable="{ tooltip: false }"
+            />
           </a-row>
         </div>
 
         <div>
           <div class="card-title">拷贝格式</div>
           <a-row>
-            <a-typography-text code>{{ config.copyFormat }}</a-typography-text>
+            <a-typography-paragraph
+              v-model:content="config.copyFormat"
+              :editable="{ tooltip: false }"
+            />
           </a-row>
         </div>
       </a-flex>
@@ -471,7 +543,16 @@ const importConfig = async (isMessage: boolean) => {
             <div>
               <div class="title">{{ item.title ?? '' }}</div>
               <div class="info">
-                <a-typography-paragraph :copyable="{ tooltip: false, text: item.duration ?? 0 }">
+                <a-typography-paragraph
+                  style="margin-bottom: 0px"
+                  :copyable="{ tooltip: false, text: item.expectDuration ?? 0 }"
+                >
+                  预计工时：{{ item.expectDuration ?? '' }}
+                </a-typography-paragraph>
+                <a-typography-paragraph
+                  style="margin-bottom: 0px"
+                  :copyable="{ tooltip: false, text: item.duration ?? 0 }"
+                >
                   {{ item.info ?? '' }}
                 </a-typography-paragraph>
               </div>

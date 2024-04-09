@@ -1,6 +1,6 @@
 {
   "name": "workhours",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "一个计算任务用时的软件",
   "main": "./out/main/index.js",
   "author": "moyisuosheng<moyisuosheng@outlook.com>",
@@ -14,7 +14,6 @@
     "typecheck": "yarn run typecheck:node && yarn run typecheck:web",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "preview": "electron-vite preview",
     "build": "yarn run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:unpack": "yarn run build && electron-builder --dir",
