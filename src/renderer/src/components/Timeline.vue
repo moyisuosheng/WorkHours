@@ -105,8 +105,8 @@ const disabledTime: DisabledTime = (_now) => {
 const config: Ref<configure> = ref<configure>({
   rang: [dayjs('09:00:00', 'HH:mm:ss'), dayjs('18:00:00', 'HH:mm:ss')],
   ignoreRang: [dayjs('12:00:00', 'HH:mm:ss'), dayjs('13:00:00', 'HH:mm:ss')],
-  min: 0.5,
-  max: 4.1,
+  min: 0.1,
+  max: 4.0,
   step: 0.1,
   initDuration: 2.5,
   timeRangeformat: 'HH:mm',
@@ -175,7 +175,7 @@ const updateList = () => {
       item.percent = 100
       item.type = 0
     }
-    item.expectDuration = config.value.initDuration + config.value.redundantDuration
+    item.expectDuration = Math.round((item.duration + config.value.redundantDuration) * 100) / 100
 
     item.startTime = start
     item.endTime = end
@@ -347,7 +347,10 @@ const importSetting = async (setting: configure) => {
     config.value.timeRangeformat = setting.timeRangeformat ?? config.value.timeRangeformat
     config.value.displayFormat = setting.displayFormat ?? config.value.displayFormat
     config.value.copyFormat = setting.copyFormat ?? config.value.copyFormat
-    config.value.disabledTime = dayjs(setting.disabledTime) ?? config.value.disabledTime
+    config.value.disabledTime = dayjs(
+      (dayjs(setting.disabledTime) ?? config.value.disabledTime).format('HH:mm'),
+      'HH:mm'
+    )
 
     updateList()
   } else {
@@ -547,7 +550,7 @@ const importConfig = async (isMessage: boolean) => {
                   style="margin-bottom: 0px"
                   :copyable="{ tooltip: false, text: item.expectDuration ?? 0 }"
                 >
-                  预计工时：{{ item.expectDuration ?? '' }}
+                  预计工时：{{ item.expectDuration ?? '' }}小时
                 </a-typography-paragraph>
                 <a-typography-paragraph
                   style="margin-bottom: 0px"
