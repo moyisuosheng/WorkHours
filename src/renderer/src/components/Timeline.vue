@@ -16,36 +16,60 @@ const configureName = 'config'
 
 const el = ref<UseDraggableReturn>()
 
+//节点配置
 type nodeConfig = {
+  //最小值
   min: number
+  //最大值
   max: number
+  //步长
   step: number
 }
 
 //定义节点类型
 type node = {
+  //时长
   duration: number
+  //预期时长
   expectDuration: number
+  //百分比
   percent?: number
+  //开始时间
   startTime?: Dayjs
+  //结束时间
   endTime?: Dayjs
+  //标题
   title?: string
+  //信息
   info?: string
+  //类型
   type?: number
+  //节点配置
   config: nodeConfig
 }
 //定义工作时间设置
 type configure = {
+  //工作时间区间
   rang: [Dayjs, Dayjs]
+  //午休时间区间（忽略区间）
   ignoreRang: [Dayjs, Dayjs]
+  //最小工时
   min: number
+  //最大工时
   max: number
+  //步进长度
   step: number
+  //初始时长
   initDuration: number
+  //时间范围显示格式
   timeRangeformat: string
+  //显示时间格式
   displayFormat: string
+  //拷贝时间格式
   copyFormat: string
+  //禁止选择时间节点
   disabledTime: Dayjs
+  //预期时长
   redundantDuration: number
 }
 
@@ -55,8 +79,20 @@ type DisabledTime = (now: Dayjs) => {
   disabledSeconds?: (selectedHour: number, selectedMinute: number) => number[]
 }
 
-//是否置顶
-const topping = ref<boolean>(false)
+type state = {
+  //是否置顶
+  topping: boolean
+  //Drawer 抽屉
+  open: boolean
+  //是否禁用拖拽
+  drag: boolean
+}
+
+const states: Ref<state> = ref<state>({
+  topping: false,
+  open: false,
+  drag: false
+})
 
 const range = (start: number, end: number): number[] => {
   const result: number[] = []
@@ -118,9 +154,6 @@ const config: Ref<configure> = ref<configure>({
 
 const list: Ref<node[]> = ref([])
 
-//抽屉是否打开
-const disabled = ref(false)
-
 const onStart = (e) => {
   console.log('start', e)
 }
@@ -129,8 +162,6 @@ const onUpdate = (e) => {
   console.log('update', e)
   updateList()
 }
-//Drawer 抽屉
-const open = ref<boolean>(false)
 
 const afterOpenChange = (bool: boolean) => {
   console.log('open', bool)
@@ -138,12 +169,12 @@ const afterOpenChange = (bool: boolean) => {
 
 //点击悬浮按钮，打开弹层
 const handleClick = () => {
-  open.value = true
+  states.value.open = true
 }
 
 const pushpin = () => {
-  topping.value = !topping.value
-  if (topping.value) {
+  states.value.topping = !states.value.topping
+  if (states.value.topping) {
     window.electronAPI.setTop()
   } else {
     window.electronAPI.cancelTop()
@@ -379,14 +410,16 @@ const importConfig = async (isMessage: boolean) => {
 
       <a-float-button @click="pushpin">
         <template #icon>
-          <PushpinOutlined :class="{ 'rotate-start': topping, 'rotate-end': !topping }" />
+          <PushpinOutlined
+            :class="{ 'rotate-start': states.topping, 'rotate-end': !states.topping }"
+          />
         </template>
       </a-float-button>
       <a-back-top :visibility-height="0" />
     </a-float-button-group>
 
     <a-drawer
-      v-model:open="open"
+      v-model:open="states.open"
       class="custom-class"
       root-class-name="root-class-name"
       :root-style="{ color: 'blue' }"
@@ -535,7 +568,7 @@ const importConfig = async (isMessage: boolean) => {
         <VueDraggable
           ref="el"
           v-model="list"
-          :disabled="disabled"
+          :disabled="states.drag"
           :animation="150"
           ghost-class="ghost"
           class="flex flex-col gap-2 p-4 w-300px h-300px m-auto bg-gray-500/5 rounded"
@@ -751,11 +784,11 @@ const importConfig = async (isMessage: boolean) => {
 .rotate-start {
   -webkit-transform: rotate(-45deg);
   transform: rotate(-45deg);
-  -webkit-transition: -webkit-transform 500ms linear;
-  transition: transform 500ms linear;
+  -webkit-transition: -webkit-transform 300ms linear;
+  transition: transform 300ms linear;
 }
 .rotate-end {
-  -webkit-transition: -webkit-transform 500ms linear;
-  transition: transform 500ms linear;
+  -webkit-transition: -webkit-transform 300ms linear;
+  transition: transform 300ms linear;
 }
 </style>
